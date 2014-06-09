@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.jdom2.Document;
 import org.jdom2.Element;
 import org.jdom2.JDOMException;
@@ -16,6 +18,7 @@ import com.example.file.grep.TextSearch;
 import com.example.file.traversal.FileStats;
 
 public class ApexParserEngine implements ParserEngine{
+	private static final Log log = LogFactory.getLog(ApexParserEngine.class);
 	private final FileStats fileStats;
 	public ApexParserEngine(FileStats fileStats) {
 		this.fileStats = fileStats;
