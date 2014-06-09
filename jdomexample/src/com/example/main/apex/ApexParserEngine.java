@@ -33,7 +33,6 @@ public class ApexParserEngine implements ParserEngine{
 				
 				findInputFields(rootNode, getFileStats());
 				findInputTextAreaFields(rootNode,getFileStats());
-				find
 			} catch (IOException io) {
 				System.out.println(io.getMessage());
 			} catch (JDOMException jdomex) {
