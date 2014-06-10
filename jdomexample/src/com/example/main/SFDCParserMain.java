@@ -30,7 +30,7 @@ public class SFDCParserMain {
 		FileListingVisitor flv = new FileListingVisitor();
 		FileStats fs = null;
 		try {
-			fs = flv.processDirectory("c:\\test");
+			fs = flv.processDirectory("C:\\force.comproject\\DevOrgProject1\\src");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
