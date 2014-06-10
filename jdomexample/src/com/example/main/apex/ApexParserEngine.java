@@ -17,7 +17,6 @@ import org.jdom2.util.IteratorIterable;
 import com.example.constants.WidgetTypes;
 import com.example.file.grep.TextSearch;
 import com.example.file.traversal.FileStats;
-import com.example.main.JdomHelper;
 
 public class ApexParserEngine implements ParserEngine{
 	private static final Log log = LogFactory.getLog(ApexParserEngine.class);
