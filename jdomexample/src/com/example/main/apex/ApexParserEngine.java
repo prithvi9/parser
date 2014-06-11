@@ -2,7 +2,10 @@ package com.example.main.apex;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -15,6 +18,7 @@ import org.jdom2.input.SAXBuilder;
 import org.jdom2.util.IteratorIterable;
 
 import com.example.constants.WidgetTypes;
+import com.example.constants.WidgetTypes.widgetTypes;
 import com.example.file.grep.TextSearch;
 import com.example.file.traversal.FileStats;
 
@@ -26,57 +30,99 @@ public class ApexParserEngine implements ParserEngine{
 	}
 
 	@Override
-	public void processVisualForcePage() {
+	public Map<String, Map<String,List<String>>> processVisualForcePage() {
+		Map<String, Map<String,List<String>>> results = new HashMap<String, Map<String,List<String>>> ();
 		SAXBuilder builder = new SAXBuilder();
 		for (String s : getFileStats().getPageLocations().keySet()) {
 			File xmlFile = new File(getFileStats().getPageLocations().get(s));
 			try {
 				Document document = (Document) builder.build(xmlFile);
 				Element rootNode = document.getRootElement();
-				List<Element> children = rootNode.getChildren("page");
-				
-				findInputFields(s,rootNode, getFileStats());
-				findInputTextAreaFields(s, rootNode,getFileStats());
+				processElements(s, rootNode, getFileStats(), results);
 			} catch (IOException io) {
-				System.out.println(io.getMessage());
+//				log.error(io.getMessage(), io);
 			} catch (JDOMException jdomex) {
-				System.out.println(jdomex.getMessage());
+//				log.error(jdomex.getMessage(),jdomex);
 			}
 		}
-
+		return results;
 	}
 
-	private void findInputFields(String pageName, Element rootNode, FileStats fs) {
-		ElementFilter inputTextAreaFilter = new ElementFilter(
-				WidgetTypes.widgetTypes.inputTextarea.name());
-		IteratorIterable<Element> descendants = rootNode
-				.getDescendants(inputTextAreaFilter);
-		processElements(pageName, descendants,rootNode, fs);
-	}
-
-	private void findInputTextAreaFields(String pageName, Element rootNode, FileStats fs) {
-		ElementFilter inputFieldFilter = new ElementFilter(
-				WidgetTypes.widgetTypes.inputField.name());
-		IteratorIterable<Element> descendants = rootNode
-				.getDescendants(inputFieldFilter);
-		processElements(pageName,descendants,rootNode, fs);
+	
+	private void processElements(String pageName, Element rootNode, FileStats fs, Map<String, Map<String,List<String>>>  results) {
+		Attribute controllerNameInVfPage = null;
+		
+		if(rootNode.getAttribute("controller")!=null){
+			log.info("found Controller for "+ pageName);
+			controllerNameInVfPage = rootNode.getAttribute("controller");
+		} else if (rootNode.getAttribute("standardController")!=null && rootNode.getAttribute("extensions")!=null){
+			log.info("found Standard controller, Extensions for "+ pageName);
+			controllerNameInVfPage = rootNode.getAttribute("extensions");
+		} else if (rootNode.getAttribute("standardController")!=null){
+			log.info("found Standard controller for "+ pageName);
+			controllerNameInVfPage = rootNode.getAttribute("standardController");
+		}
+		for(WidgetTypes.widgetTypes type : widgetTypes.values()){
+			ElementFilter filter = new ElementFilter(type.name());
+			IteratorIterable<Element> descendants = rootNode.getDescendants(filter);
+			if (controllerNameInVfPage!=null && controllerNameInVfPage.getValue()!=null) {
+				String controllerClassName = fs.getControllerLocations().get(controllerNameInVfPage.getValue()+".cls");
+				while (descendants.hasNext()) {
+					Element c = (Element) descendants.next();
+					if(type.equals(widgetTypes.repeat)){
+						
+					}
+					else if (type.equals(widgetTypes.inputField)){
+						String[] splits = processField(c.getAttribute("value").getValue());
+						if (controllerClassName != null) {
+							String className = null;
+							try {
+								className = TextSearch.searchString(controllerClassName,splits[0]);
+							} catch (IOException e) {
+								log.error(e.getMessage(), e);
+							}
+							catalogResults(pageName, controllerClassName, className, splits[1], results);
+							log.info(pageName+":"+ controllerNameInVfPage.getValue() + ":" + className + ":"+ splits[1]);
+						}else{
+							log.info("Failed to fetch controller class name, probably a standard object");
+								String value = getValueAttribute(c);
+								
+						}
+					}
+				}
+			}
+		}
 	}
 	
-	private void processElements(String pageName, IteratorIterable<Element> descendants, Element rootNode, FileStats fs) {
-		while (descendants.hasNext()) {
-			Element c = (Element) descendants.next();
-			String[] splits = processField(c.getAttribute("value").getValue());
-			Attribute attribute = rootNode.getAttribute("controller");
-			if (attribute!=null && attribute.getValue()!=null) {
-				String controllerName = fs.getControllerLocations().get(attribute.getValue()+".cls");
-				String className = null ;
-				try {
-					className = TextSearch.searchString(controllerName, splits[0]);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				System.out.println(pageName+":"+rootNode.getAttribute("controller").getValue()+":"+className+":"+splits[1]);
+	private void catalogResults(String pageName, String controllerName, String fieldName, String s,  Map<String, Map<String,List<String>>>  results){
+		if(!results.containsKey(pageName)){
+			
+			Map<String, List<String>> classDetails = new HashMap<String, List<String>>();
+			List<String> subfields = new ArrayList<String>();
+			subfields.add(fieldName+"^"+s);
+			classDetails.put(controllerName, subfields);
+			results.put(pageName,classDetails);
+			
+		}else{
+			Map<String, List<String>> map = results.get(pageName);
+			if(!map.containsKey(controllerName)){
+				Map<String, List<String>> classDetails = new HashMap<String, List<String>>();
+				List<String> subfields = new ArrayList<String>();
+				subfields.add(fieldName+"^"+s);
+				classDetails.put(controllerName, subfields);
+				results.put(pageName,classDetails);
+			}else{
+				List<String> list = map.get(controllerName);
+				list.add(fieldName+"^"+s);
 			}
+		}
+	}
+	
+	private String getValueAttribute(Element e){
+		if(e != null){
+			return e.getAttribute("value").getValue();
+		}else {
+			return null;
 		}
 	}
 	
