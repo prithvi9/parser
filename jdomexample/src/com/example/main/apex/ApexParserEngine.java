@@ -72,7 +72,7 @@ public class ApexParserEngine implements ParserEngine{
 					if(type.equals(widgetTypes.repeat)){
 						
 					}
-					else if (type.equals(widgetTypes.inputField)){
+					else if (type.equals(widgetTypes.inputField)|| type.equals(widgetTypes.inputTextarea)){
 						String[] splits = processField(c.getAttribute("value").getValue());
 						if (controllerClassName != null) {
 							String className = null;
